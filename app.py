@@ -255,6 +255,7 @@ def parse_spreadsheet(b64_str: str) -> list:
                 "imie_nazwisko": name,
                 "data_urodzenia": fix_date(birth_date_raw),
                 "miejsce_urodzenia": fix_location(birth_place_raw),
+                "placowka": "",
                 "locked": False
             },
             "sorting_name": sorting_name,

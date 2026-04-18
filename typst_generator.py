@@ -63,9 +63,16 @@ def generate_pdfs(working_dir: Union[str, Path]) -> None:
 
     # Data Serialization
     raw_data: Dict[str, Any] = _load_json_data(data_path)
+    
+    # Ensure all participants have "placowka" key
+    participants = raw_data.get("participants", [])
+    for p in participants:
+        if "placowka" not in p:
+            p["placowka"] = ""
+
     typst_inputs: Dict[str, str] = {
         "training": json.dumps(raw_data.get("training", {})),
-        "participants": json.dumps(raw_data.get("participants", []))
+        "participants": json.dumps(participants)
     }
 
     # Compilation Loop
