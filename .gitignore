@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# PyInstaller output directories
+dist/
+build/
+
+# PyInstaller log and metadata files
+*.spec
+
+# If you use 'onefile' mode, PyInstaller might create temporary folders
+# sometimes named with a prefix like 'pyi_'
+pyi_*/
+
+build.sh
