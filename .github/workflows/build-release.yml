@@ -1,0 +1,101 @@
+name: Build and Release App
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on tags like v1.0.0
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
+    # The matrix defines the parallel environments and their specific file names
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            zip_name: GeneratorZaswiadczen-Windows.zip
+            sha_name: GeneratorZaswiadczen-Windows.zip.sha256
+          - os: ubuntu-latest
+            zip_name: GeneratorZaswiadczen-Linux.zip
+            sha_name: GeneratorZaswiadczen-Linux.zip.sha256
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync
+
+      # ==========================================
+      # WINDOWS SPECIFIC BUILD STEPS
+      # ==========================================
+      - name: Build App (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          uv run pyinstaller --noconfirm --onedir --windowed `
+            --add-data "assets;assets" `
+            --add-data "web;web" `
+            --name "GeneratorZaswiadczen" `
+            app.py
+
+      - name: Zip and Checksum (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          # Zip the directory
+          Compress-Archive -Path dist\GeneratorZaswiadczen -DestinationPath ${{ matrix.zip_name }}
+          
+          # Generate SHA256
+          $hash = (Get-FileHash ${{ matrix.zip_name }} -Algorithm SHA256).Hash.ToLower()
+          "$hash  ${{ matrix.zip_name }}" | Out-File -FilePath ${{ matrix.sha_name }} -Encoding ascii
+
+      # ==========================================
+      # LINUX SPECIFIC BUILD STEPS
+      # ==========================================
+      - name: Build App (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          uv run pyinstaller --noconfirm --onedir --windowed \
+            --add-data "assets:assets" \
+            --add-data "web:web" \
+            --name "GeneratorZaswiadczen" \
+            app.py
+
+      - name: Zip and Checksum (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Zip the directory (navigate to dist first so the root of the zip is the folder itself)
+          cd dist
+          zip -r ../${{ matrix.zip_name }} GeneratorZaswiadczen
+          cd ..
+          
+          # Generate SHA256
+          sha256sum ${{ matrix.zip_name }} > ${{ matrix.sha_name }}
+
+      # ==========================================
+      # UPLOAD TO GITHUB RELEASES
+      # ==========================================
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          # This appends the artifacts from both OS runs into the exact same release
+          files: |
+            ${{ matrix.zip_name }}
+            ${{ matrix.sha_name }}
+          generate_release_notes: true
