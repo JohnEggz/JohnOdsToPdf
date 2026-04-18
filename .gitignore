@@ -21,3 +21,4 @@ build/
 pyi_*/
 
 build.sh
+/test*.py

@@ -3,7 +3,7 @@ name: Build and Release App
 on:
   push:
     tags:
-      - 'v*' # Triggers on tags like v1.0.0
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -14,20 +14,26 @@ jobs:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     
-    # The matrix defines the parallel environments and their specific file names
     strategy:
       matrix:
         include:
           - os: windows-latest
             zip_name: GeneratorZaswiadczen-Windows.zip
             sha_name: GeneratorZaswiadczen-Windows.zip.sha256
+            launcher_name: Start_Generator.exe
           - os: ubuntu-latest
             zip_name: GeneratorZaswiadczen-Linux.zip
             sha_name: GeneratorZaswiadczen-Linux.zip.sha256
+            launcher_name: Start_Generator
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Tkinter needs to be present on the Linux runner to build the GUI correctly
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -43,9 +49,9 @@ jobs:
         run: uv sync
 
       # ==========================================
-      # WINDOWS SPECIFIC BUILD STEPS
+      # 1. MAIN APP BUILD & ZIP
       # ==========================================
-      - name: Build App (Windows)
+      - name: Build & Zip App (Windows)
         if: runner.os == 'Windows'
         run: |
           uv run pyinstaller --noconfirm --onedir --windowed `
@@ -53,21 +59,11 @@ jobs:
             --add-data "web;web" `
             --name "GeneratorZaswiadczen" `
             app.py
-
-      - name: Zip and Checksum (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          # Zip the directory
           Compress-Archive -Path dist\GeneratorZaswiadczen -DestinationPath ${{ matrix.zip_name }}
-          
-          # Generate SHA256
           $hash = (Get-FileHash ${{ matrix.zip_name }} -Algorithm SHA256).Hash.ToLower()
           "$hash  ${{ matrix.zip_name }}" | Out-File -FilePath ${{ matrix.sha_name }} -Encoding ascii
 
-      # ==========================================
-      # LINUX SPECIFIC BUILD STEPS
-      # ==========================================
-      - name: Build App (Linux)
+      - name: Build & Zip App (Linux)
         if: runner.os == 'Linux'
         run: |
           uv run pyinstaller --noconfirm --onedir --windowed \
@@ -75,27 +71,31 @@ jobs:
             --add-data "web:web" \
             --name "GeneratorZaswiadczen" \
             app.py
-
-      - name: Zip and Checksum (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          # Zip the directory (navigate to dist first so the root of the zip is the folder itself)
           cd dist
           zip -r ../${{ matrix.zip_name }} GeneratorZaswiadczen
           cd ..
-          
-          # Generate SHA256
           sha256sum ${{ matrix.zip_name }} > ${{ matrix.sha_name }}
 
       # ==========================================
-      # UPLOAD TO GITHUB RELEASES
+      # 2. LAUNCHER BUILD
+      # ==========================================
+      - name: Build Launcher (Windows)
+        if: runner.os == 'Windows'
+        run: uv run pyinstaller --noconfirm --onefile --windowed --name "Start_Generator" launcher.py
+
+      - name: Build Launcher (Linux)
+        if: runner.os == 'Linux'
+        run: uv run pyinstaller --noconfirm --onefile --name "Start_Generator" launcher.py
+
+      # ==========================================
+      # 3. UPLOAD EVERYTHING TO RELEASE
       # ==========================================
       - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          # This appends the artifacts from both OS runs into the exact same release
           files: |
             ${{ matrix.zip_name }}
             ${{ matrix.sha_name }}
+            dist/${{ matrix.launcher_name }}
           generate_release_notes: true

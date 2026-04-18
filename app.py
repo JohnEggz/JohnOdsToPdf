@@ -153,12 +153,17 @@ def open_native_path(id_str: str, subpath: str = None):
         raise Exception("Ten plik jeszcze nie istnieje. Wygeneruj PDF.")
         
     path_str = str(path)
+    
+    # FIX: Strip PyInstaller's injected library paths before calling system utilities
+    clean_env = os.environ.copy()
+    clean_env.pop("LD_LIBRARY_PATH", None)
+
     if sys.platform == "win32":
         os.startfile(path_str)
     elif sys.platform == "darwin":
-        subprocess.Popen(["open", path_str])
+        subprocess.Popen(["open", path_str], env=clean_env)
     else:
-        subprocess.Popen(["xdg-open", path_str])
+        subprocess.Popen(["xdg-open", path_str], env=clean_env)
 
 
 # --- DATA PARSING HELPERS ---
