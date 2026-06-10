@@ -1,0 +1,40 @@
+/* web/style.css */
+
+::-webkit-scrollbar { 
+    width: 6px; 
+    height: 6px; 
+}
+
+::-webkit-scrollbar-track { 
+    background: transparent; 
+}
+
+::-webkit-scrollbar-thumb { 
+    background: #cbd5e1; 
+    border-radius: 4px; 
+}
+
+::-webkit-scrollbar-thumb:hover { 
+    background: #94a3b8; 
+}
+
+td[contenteditable="true"]:focus {
+    outline: 2px solid #3b82f6; 
+    outline-offset: -2px;
+    background-color: #eff6ff; 
+    border-radius: 4px;
+}
+
+/* Highlighting Logic Styles */
+.dirty-input { 
+    background-color: #fef9c3 !important; 
+    border-color: #facc15 !important; 
+}
+
+.dirty-row { 
+    background-color: #fef9c3 !important; 
+}
+
+.new-row { 
+    background-color: #dcfce7 !important; 
+}

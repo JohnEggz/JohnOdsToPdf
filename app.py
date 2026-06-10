@@ -7,9 +7,13 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from statistics import mean
+from collections import Counter
 
 import eel
 import pandas as pd
+import ezodf
+from ankieta_parser import process_ods_buffer
 
 # DO NOT RE-INVENT: Using your already implemented generator example
 from typst_generator import generate_pdfs
@@ -286,6 +290,29 @@ def parse_spreadsheet(b64_str: str) -> list:
         i = j
         
     return final_list
+
+@eel.expose
+def parse_survey_buffer(b64_str: str) -> str:
+    """
+    Exposed Eel function. Receives a Base64 string from the frontend,
+    processes it completely in-memory, and returns the formatted text report.
+    """
+    try:
+        # 1. Strip the Base64 header if it's sent from JavaScript FileReader
+        if "," in b64_str:
+            b64_str = b64_str.split(",")[1]
+
+        # 2. Decode base64 string to raw bytes
+        file_bytes = base64.b64decode(b64_str)
+        
+        # 3. Convert bytes to an in-memory file-like object
+        file_buffer = io.BytesIO(file_bytes)
+        
+        # 4. Use the consolidated parser
+        return process_ods_buffer(file_buffer)
+
+    except Exception as e:
+        return f"Błąd podczas dekodowania pliku: {str(e)}"
 
 
 if __name__ == "__main__":

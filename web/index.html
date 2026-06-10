@@ -6,22 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generator Zaświadczeń Typst</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        td[contenteditable="true"]:focus {
-            outline: 2px solid #3b82f6; outline-offset: -2px;
-            background-color: #eff6ff; border-radius: 4px;
-        }
-
-        /* Highlighting Logic Styles */
-        .dirty-input { background-color: #fef9c3 !important; border-color: #facc15 !important; }
-        .dirty-row { background-color: #fef9c3 !important; }
-        .new-row { background-color: #dcfce7 !important; }
-    </style>
+    <link rel="stylesheet" href="style.css">
     <script type="text/javascript" src="/eel.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans h-screen flex overflow-hidden relative">
@@ -124,9 +109,11 @@
 
                 <div class="w-px h-5 bg-gray-300 mx-1 self-center"></div>
 
-                <button onclick="addRow()" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors border border-indigo-200 shadow-sm flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Dodaj wiersz
-                </button>
+                <div id="survey-drop-zone" class="px-4 py-1.5 bg-green-50 text-green-700 border-2 border-dashed border-green-300 rounded-lg text-sm font-medium transition-all flex items-center gap-2 hover:bg-green-100 cursor-pointer" onclick="document.getElementById('survey-picker').click()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    Ankieta (Drop)
+                </div>
+                <input type="file" id="survey-picker" accept=".ods" class="hidden" onchange="handleSurveyManualSelect(this)">
             </div>
         </header>
 
@@ -379,7 +366,104 @@
             }
         });
 
+        function handleSurveyManualSelect(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const base64Str = e.target.result.split(',')[1];
+                    const output = await eel.parse_survey_buffer(base64Str)();
+                    if (output.startsWith("Błąd") || output.startsWith("Error")) {
+                        alert(output);
+                    } else {
+                        document.getElementById('survey-output-text').innerText = output;
+                        document.getElementById('survey-modal').classList.remove('hidden');
+                    }
+                    input.value = ''; // Reset selector target field
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Survey Drop Zone logic
+        const surveyDropZone = document.getElementById('survey-drop-zone');
+        
+        surveyDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            surveyDropZone.classList.replace('bg-green-50', 'bg-green-200');
+            surveyDropZone.classList.replace('border-green-300', 'border-green-500');
+        });
+
+        surveyDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            surveyDropZone.classList.replace('bg-green-200', 'bg-green-50');
+            surveyDropZone.classList.replace('border-green-500', 'border-green-300');
+        });
+
+        surveyDropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            surveyDropZone.classList.replace('bg-green-200', 'bg-green-50');
+            surveyDropZone.classList.replace('border-green-500', 'border-green-300');
+            overlay.classList.replace('flex', 'hidden');
+
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    const base64Str = event.target.result.split(',')[1];
+                    const output = await eel.parse_survey_buffer(base64Str)();
+                    if (output.startsWith("Błąd") || output.startsWith("Error")) {
+                        alert(output);
+                    } else {
+                        document.getElementById('survey-output-text').innerText = output;
+                        document.getElementById('survey-modal').classList.remove('hidden');
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function closeSurveyModal() {
+            document.getElementById('survey-modal').classList.add('hidden');
+        }
+
+        async function copySurveyText() {
+            const text = document.getElementById('survey-output-text').innerText;
+            try {
+                await navigator.clipboard.writeText(text);
+                alert("Skopiowano do schowka!");
+            } catch (err) {
+                console.error("Failed to copy: ", err);
+            }
+        }
+
         init();
+
     </script>
+
+    <div id="survey-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full h-[80vh] flex flex-col overflow-hidden">
+            <header class="p-4 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Podsumowanie Ankiety Ewaluacyjnej
+                </h3>
+                <div class="flex gap-2">
+                    <button onclick="copySurveyText()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md shadow transition-colors flex items-center gap-1">
+                        Kopiuj treść
+                    </button>
+                    <button onclick="closeSurveyModal()" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium rounded-md transition-colors">
+                        Zamknij
+                    </button>
+                </div>
+            </header>
+            <div class="flex-1 p-6 overflow-y-auto bg-white">
+                <pre id="survey-output-text" class="text-gray-700 font-sans text-sm whitespace-pre-wrap select-all leading-relaxed"></pre>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
