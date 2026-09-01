@@ -269,27 +269,29 @@ def parse_spreadsheet(b64_str: str) -> list:
     # Sort matching the Rust custom locale strategy
     raw_participants.sort(key=lambda x: [get_polish_weight(c) for c in x["sorting_name"]])
 
+    return [item["participant"] for item in raw_participants]
+
     # Deduplicate keeping entries with email records where available
-    final_list = []
-    i = 0
-    while i < len(raw_participants):
-        curr = raw_participants[i]
-        best_idx = i
-        j = i + 1
-        
-        while j < len(raw_participants):
-            nxt = raw_participants[j]
-            if curr["sorting_name"] == nxt["sorting_name"] and curr["participant"]["data_urodzenia"] == nxt["participant"]["data_urodzenia"]:
-                if raw_participants[best_idx]["email"] is None and nxt["email"] is not None:
-                    best_idx = j
-                j += 1
-            else:
-                break
-                
-        final_list.append(raw_participants[best_idx]["participant"])
-        i = j
-        
-    return final_list
+    # final_list = []
+    # i = 0
+    # while i < len(raw_participants):
+    #     curr = raw_participants[i]
+    #     best_idx = i
+    #     j = i + 1
+    #
+    #     while j < len(raw_participants):
+    #         nxt = raw_participants[j]
+    #         if curr["sorting_name"] == nxt["sorting_name"] and curr["participant"]["data_urodzenia"] == nxt["participant"]["data_urodzenia"]:
+    #             if raw_participants[best_idx]["email"] is None and nxt["email"] is not None:
+    #                 best_idx = j
+    #             j += 1
+    #         else:
+    #             break
+    #
+    #     final_list.append(raw_participants[best_idx]["participant"])
+    #     i = j
+    #
+    # return final_list
 
 @eel.expose
 def parse_survey_buffer(b64_str: str) -> str:
