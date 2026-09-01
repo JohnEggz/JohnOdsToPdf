@@ -29,7 +29,7 @@
       dir: ttb,
       spacing: 1.2em,
       
-      tr.numer_szkolenia,
+      [#tr.numer_szkolenia/#(i + 1)],
       v(0.5cm),
 
       blue-line,
